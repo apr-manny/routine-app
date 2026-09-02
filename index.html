@@ -59,12 +59,20 @@
   .field-block { flex: 1; }
 
   .slot-input-row {
-    display: flex; gap: 8px; align-items: flex-end; background: #12121e;
+    display: flex; flex-direction: column; gap: 8px; background: #12121e;
     padding: 8px; border-radius: 10px; margin-bottom: 4px;
   }
+  .slot-input-top { display: flex; gap: 8px; align-items: flex-end; }
   .slot-input-row input[type="time"], .slot-input-row input[type="number"] { flex: 0 0 auto; width: 100px; }
   .slot-remove-btn { background: none; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px 8px; }
   .add-slot-btn { background: #1a2b4a; color: #60a5fa; border: none; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; cursor: pointer; width: 100%; }
+
+  .weekday-picker { display: flex; gap: 4px; flex-wrap: wrap; }
+  .weekday-toggle {
+    padding: 6px 9px; border-radius: 7px; border: 1px solid #33334d; background: #1a1a2b;
+    color: #9a9aae; font-size: 0.72rem; cursor: pointer; user-select: none;
+  }
+  .weekday-toggle.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
 
   .category-manager { background: #12121e; padding: 10px; border-radius: 10px; }
   .category-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -89,12 +97,15 @@
 
   .slot-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; background: #1a1a2b; gap: 10px; }
   .slot-row.done { background: #1f3d2b; }
+  .slot-row.inactive-today { opacity: 0.45; }
   .slot-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #4ade80; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 0.85rem; }
   .checkbox.checked { background: #4ade80; color: #0a0a12; }
+  .checkbox.disabled { border-color: #4b4b63; cursor: not-allowed; }
   .slot-time { font-size: 0.88rem; }
   .slot-time.done-text { text-decoration: line-through; color: #7c7c9c; }
   .slot-duration { font-size: 0.72rem; color: #7c7c9c; }
+  .slot-days { font-size: 0.68rem; color: #60a5fa; margin-top: 1px; }
   .streak { font-size: 0.72rem; color: #f59e0b; background: #2b2416; padding: 2px 7px; border-radius: 7px; flex-shrink: 0; }
   .slot-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .cal-btn { background: #1a2b4a; border: none; color: #60a5fa; font-size: 0.85rem; cursor: pointer; padding: 5px 7px; border-radius: 7px; }
@@ -164,7 +175,7 @@
 
     <div class="add-form">
       <div class="add-form-row">
-        <input type="text" id="newItemInput" placeholder="Neue Routine hinzufügen (z. B. Zähneputzen)...">
+        <input type="text" id="newItemInput" placeholder="Neue Routine hinzufügen (z. B. Oberkörper Workout)...">
       </div>
       <div class="add-form-row">
         <div class="field-block">
@@ -194,14 +205,14 @@
   <!-- TAB: WOCHE -->
   <div class="tab-panel" id="panel-woche">
     <div class="section-title">Letzte 7 Tage</div>
-    <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine gab's an dem Tag noch nicht.</div>
+    <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine war an dem Tag gar nicht dran (falscher Wochentag oder gab's noch nicht).</div>
     <div class="week-table-wrap"><div id="weekTable"></div></div>
   </div>
 
   <!-- TAB: MONAT -->
   <div class="tab-panel" id="panel-monat">
     <div class="section-title" id="monthTitle">Monatsübersicht</div>
-    <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag.</div>
+    <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag (nur relevante Routinen zählen mit).</div>
     <div class="month-weekday-label" id="monthWeekdayLabels"></div>
     <div class="month-grid" id="monthGrid"></div>
     <div class="legend">
@@ -218,7 +229,7 @@
   <!-- TAB: MUSTER -->
   <div class="tab-panel" id="panel-muster">
     <div class="section-title">Wochentags-Analyse</div>
-    <div class="section-sub">Durchschnittliche Erledigungsquote je Wochentag, über deinen gesamten Trackingzeitraum.</div>
+    <div class="section-sub">Durchschnittliche Erledigungsquote je Wochentag, nur basierend auf Routinen, die an dem Tag überhaupt geplant waren.</div>
     <div class="weekday-bars" id="weekdayBars"></div>
     <div class="insight-box" id="weekdayInsight"></div>
   </div>
@@ -231,6 +242,9 @@ const EXPORT_DAYS = 7;
 const DEFAULT_CATEGORIES = ['Training','Nutrition','Content','Mindset','Health','Journaling','Business','Podcast','Recovery','Other'];
 const WEEKDAY_NAMES = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const WEEKDAY_NAMES_FULL = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const WEEKDAY_SHORT_PICKER = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+const WEEKDAY_PICKER_TO_JSDAY = [1,2,3,4,5,6,0]; // Mapping Picker-Index -> JS getDay()
+const ICS_BYDAY = ['SU','MO','TU','WE','TH','FR','SA']; // Index = JS getDay()
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function pad(n) { return n.toString().padStart(2, '0'); }
@@ -247,13 +261,21 @@ function loadData() {
       item.slots = [{ slotId: item.id + '-s1', time: item.time || '08:00', duration: item.duration || 30, done: item.done || false, streak: item.streak || 0 }];
       delete item.time; delete item.duration; delete item.done; delete item.streak;
     }
+    item.slots.forEach(slot => {
+      if (!slot.weekdays) slot.weekdays = [0,1,2,3,4,5,6]; // Standard: alle Tage
+    });
   });
 
   snapshotHistory(data, data.lastReset);
 
   if (data.lastReset !== todayStr()) {
+    const lastResetWeekday = new Date(data.lastReset).getDay();
     data.items.forEach(item => {
-      item.slots.forEach(slot => { if (!slot.done) slot.streak = 0; slot.done = false; });
+      item.slots.forEach(slot => {
+        const wasActive = slot.weekdays.includes(lastResetWeekday);
+        if (wasActive && !slot.done) slot.streak = 0;
+        slot.done = false;
+      });
     });
     data.lastReset = todayStr();
     snapshotHistory(data, data.lastReset);
@@ -262,10 +284,17 @@ function loadData() {
   return data;
 }
 
+function isSlotActiveOnWeekday(slot, jsWeekday) {
+  return slot.weekdays.includes(jsWeekday);
+}
+
 function snapshotHistory(data, dateKey) {
   if (!dateKey) return;
+  const weekday = new Date(dateKey).getDay();
   const bySlot = {};
-  data.items.forEach(item => item.slots.forEach(slot => { bySlot[slot.slotId] = slot.done; }));
+  data.items.forEach(item => item.slots.forEach(slot => {
+    if (isSlotActiveOnWeekday(slot, weekday)) bySlot[slot.slotId] = slot.done;
+  }));
   data.history[dateKey] = bySlot;
 }
 
@@ -319,9 +348,9 @@ function addCategory() {
 function deleteCategory(cat) {
   const usedByItems = data.items.some(i => i.category === cat);
   if (usedByItems) {
-    if (!confirm(`"${cat}" wird noch von mindestens einer Routine verwendet. Diese Routinen werden auf "Sonstiges" umgestellt. Fortfahren?`)) return;
-    if (!data.categories.includes('Sonstiges')) data.categories.push('Sonstiges');
-    data.items.forEach(i => { if (i.category === cat) i.category = 'Sonstiges'; });
+    if (!confirm(`"${cat}" wird noch von mindestens einer Routine verwendet. Diese Routinen werden auf "Other" umgestellt. Fortfahren?`)) return;
+    if (!data.categories.includes('Other')) data.categories.push('Other');
+    data.items.forEach(i => { if (i.category === cat) i.category = 'Other'; });
   }
   data.categories = data.categories.filter(c => c !== cat);
   saveData(data);
@@ -330,17 +359,42 @@ function deleteCategory(cat) {
   render();
 }
 
-function addSlotInput(defaultTime, defaultDuration) {
+function addSlotInput(defaultTime, defaultDuration, defaultWeekdays) {
   slotInputCount++;
   const container = document.getElementById('slotInputsContainer');
   const row = document.createElement('div');
   row.className = 'slot-input-row';
   row.id = 'slotInput-' + slotInputCount;
-  row.innerHTML = `
+
+  const activeDays = defaultWeekdays || [0,1,2,3,4,5,6];
+
+  const topRow = document.createElement('div');
+  topRow.className = 'slot-input-top';
+  topRow.innerHTML = `
     <div class="field-block"><label>Uhrzeit</label><input type="time" class="slot-time-input" value="${defaultTime || '08:00'}"></div>
     <div class="field-block"><label>Dauer (Min)</label><input type="number" class="slot-duration-input" value="${defaultDuration || 15}" min="1" step="5"></div>
     <button class="slot-remove-btn" onclick="removeSlotInput(${slotInputCount})">✕</button>
   `;
+  row.appendChild(topRow);
+
+  const dayLabel = document.createElement('label');
+  dayLabel.textContent = 'An welchen Tagen?';
+  row.appendChild(dayLabel);
+
+  const picker = document.createElement('div');
+  picker.className = 'weekday-picker';
+  picker.dataset.slotInputId = slotInputCount;
+  WEEKDAY_SHORT_PICKER.forEach((label, idx) => {
+    const jsDay = WEEKDAY_PICKER_TO_JSDAY[idx];
+    const btn = document.createElement('div');
+    btn.className = 'weekday-toggle' + (activeDays.includes(jsDay) ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.jsday = jsDay;
+    btn.onclick = () => btn.classList.toggle('active');
+    picker.appendChild(btn);
+  });
+  row.appendChild(picker);
+
   container.appendChild(row);
 }
 
@@ -358,12 +412,18 @@ function addItem() {
   if (!text) return;
 
   const slotRows = document.querySelectorAll('.slot-input-row');
-  const slots = Array.from(slotRows).map((row, idx) => ({
-    slotId: 'slot-' + Date.now() + '-' + idx,
-    time: row.querySelector('.slot-time-input').value || '08:00',
-    duration: parseInt(row.querySelector('.slot-duration-input').value) || 15,
-    done: false, streak: 0
-  }));
+  const slots = Array.from(slotRows).map((row, idx) => {
+    const activeToggles = row.querySelectorAll('.weekday-toggle.active');
+    let weekdays = Array.from(activeToggles).map(t => parseInt(t.dataset.jsday));
+    if (weekdays.length === 0) weekdays = [0,1,2,3,4,5,6];
+    return {
+      slotId: 'slot-' + Date.now() + '-' + idx,
+      time: row.querySelector('.slot-time-input').value || '08:00',
+      duration: parseInt(row.querySelector('.slot-duration-input').value) || 15,
+      done: false, streak: 0,
+      weekdays: weekdays
+    };
+  });
 
   data.items.push({ id: Date.now(), text, category, slots });
   input.value = '';
@@ -377,6 +437,8 @@ function addItem() {
 function toggleSlot(itemId, slotId) {
   const item = data.items.find(i => i.id === itemId);
   const slot = item.slots.find(s => s.slotId === slotId);
+  const todayWeekday = new Date().getDay();
+  if (!isSlotActiveOnWeekday(slot, todayWeekday)) return;
   slot.done = !slot.done;
   slot.streak = slot.done ? slot.streak + 1 : Math.max(0, slot.streak - 1);
   snapshotHistory(data, todayStr());
@@ -405,13 +467,31 @@ function formatICSDateUTC(date) { return date.getUTCFullYear() + pad(date.getUTC
 
 let exportTimestamp = null;
 
+function findNextActiveDate(weekdays) {
+  const d = new Date();
+  for (let i = 0; i < 7; i++) {
+    if (weekdays.includes(d.getDay())) return d;
+    d.setDate(d.getDate() + 1);
+  }
+  return new Date();
+}
+
 function buildVEvent(item, slot) {
   const [h, m] = slot.time.split(':').map(Number);
-  const start = new Date(); start.setHours(h, m, 0, 0);
+  const start = findNextActiveDate(slot.weekdays);
+  start.setHours(h, m, 0, 0);
   const end = new Date(start.getTime() + slot.duration * 60000);
-  const until = new Date(start); until.setDate(until.getDate() + (EXPORT_DAYS - 1)); until.setHours(23, 59, 59, 0);
+  const until = new Date();
+  until.setDate(until.getDate() + (EXPORT_DAYS - 1));
+  until.setHours(23, 59, 59, 0);
+
   const uid = 'routine-' + slot.slotId + '-' + exportTimestamp + '@routinetracker';
-  return ['BEGIN:VEVENT','UID:' + uid,'DTSTAMP:' + formatICSDateUTC(new Date()),'DTSTART:' + formatICSDate(start),'DTEND:' + formatICSDate(end),'RRULE:FREQ=DAILY;UNTIL=' + formatICSDateUTC(until),'SUMMARY:' + item.text + ' (' + item.category + ')','DESCRIPTION:Routine aus Routine Tracker – gültig für ' + EXPORT_DAYS + ' Tage','END:VEVENT'].join('\r\n');
+  const isDaily = slot.weekdays.length === 7;
+  const rrule = isDaily
+    ? 'RRULE:FREQ=DAILY;UNTIL=' + formatICSDateUTC(until)
+    : 'RRULE:FREQ=WEEKLY;BYDAY=' + slot.weekdays.map(d => ICS_BYDAY[d]).join(',') + ';UNTIL=' + formatICSDateUTC(until);
+
+  return ['BEGIN:VEVENT','UID:' + uid,'DTSTAMP:' + formatICSDateUTC(new Date()),'DTSTART:' + formatICSDate(start),'DTEND:' + formatICSDate(end), rrule,'SUMMARY:' + item.text + ' (' + item.category + ')','DESCRIPTION:Routine aus Routine Tracker – gültig für ' + EXPORT_DAYS + ' Tage','END:VEVENT'].join('\r\n');
 }
 
 function downloadICS(content, filename) {
@@ -438,12 +518,19 @@ function exportSlotToCalendar(itemId, slotId) {
   downloadICS(buildVEvent(item, slot), item.text.replace(/\s+/g, '_') + '_' + slot.time.replace(':','') + '.ics');
 }
 
+function weekdaysLabel(weekdays) {
+  if (weekdays.length === 7) return 'täglich';
+  const sorted = WEEKDAY_PICKER_TO_JSDAY.filter(d => weekdays.includes(d));
+  return sorted.map(d => WEEKDAY_NAMES[d]).join(', ');
+}
+
 function render() {
   const list = document.getElementById('routineList');
   const emptyHint = document.getElementById('emptyHint');
   list.innerHTML = '';
   emptyHint.style.display = data.items.length === 0 ? 'block' : 'none';
 
+  const todayWeekday = new Date().getDay();
   const categories = [...new Set(data.items.map(i => i.category))];
 
   categories.forEach(cat => {
@@ -470,13 +557,15 @@ function render() {
       card.appendChild(header);
 
       item.slots.sort((a,b) => a.time.localeCompare(b.time)).forEach(slot => {
+        const activeToday = isSlotActiveOnWeekday(slot, todayWeekday);
         const row = document.createElement('div');
-        row.className = 'slot-row' + (slot.done ? ' done' : '');
+        row.className = 'slot-row' + (slot.done ? ' done' : '') + (!activeToday ? ' inactive-today' : '');
         const left = document.createElement('div');
         left.className = 'slot-left';
         const box = document.createElement('div');
-        box.className = 'checkbox' + (slot.done ? ' checked' : '');
+        box.className = 'checkbox' + (slot.done ? ' checked' : '') + (!activeToday ? ' disabled' : '');
         box.textContent = slot.done ? '✓' : '';
+        box.title = activeToday ? '' : 'Heute nicht geplant';
         box.onclick = () => toggleSlot(item.id, slot.slotId);
         const timeWrap = document.createElement('div');
         const timeSpan = document.createElement('span');
@@ -485,7 +574,10 @@ function render() {
         const durSpan = document.createElement('div');
         durSpan.className = 'slot-duration';
         durSpan.textContent = slot.duration + ' Min';
-        timeWrap.appendChild(timeSpan); timeWrap.appendChild(durSpan);
+        const daysSpan = document.createElement('div');
+        daysSpan.className = 'slot-days';
+        daysSpan.textContent = weekdaysLabel(slot.weekdays);
+        timeWrap.appendChild(timeSpan); timeWrap.appendChild(durSpan); timeWrap.appendChild(daysSpan);
         left.appendChild(box); left.appendChild(timeWrap);
         if (slot.streak > 0) {
           const streakTag = document.createElement('span');
@@ -509,9 +601,9 @@ function render() {
     list.appendChild(block);
   });
 
-  const allSlots = data.items.flatMap(i => i.slots);
-  const total = allSlots.length;
-  const doneCount = allSlots.filter(s => s.done).length;
+  const allSlotsToday = data.items.flatMap(i => i.slots).filter(s => isSlotActiveOnWeekday(s, todayWeekday));
+  const total = allSlotsToday.length;
+  const doneCount = allSlotsToday.filter(s => s.done).length;
   const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressText').textContent = `${doneCount}/${total}`;
