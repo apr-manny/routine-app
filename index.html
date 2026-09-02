@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Routine Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #12121c);
+    color: #f0f0f5;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 16px; }
+  header h1 { font-size: 1.8rem; font-weight: 700; }
+  header p { color: #9a9aae; font-size: 0.9rem; margin-top: 4px; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; background: #1a1a2b; padding: 5px; border-radius: 12px; }
+  .tab-btn {
+    flex: 1; padding: 9px 6px; border: none; border-radius: 9px; background: transparent;
+    color: #9a9aae; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .tab-btn.active { background: #3b82f6; color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .progress-wrap { background: #23233a; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .progress-bar-bg { background: #33334d; border-radius: 10px; height: 14px; overflow: hidden; margin-top: 8px; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22c55e); width: 0%; transition: width 0.3s ease; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: #b4b4c8; }
+
+  .export-btn-wrap { margin-bottom: 8px; }
+  .export-btn {
+    width: 100%; padding: 12px; border-radius: 12px; border: none;
+    background: linear-gradient(90deg, #60a5fa, #3b82f6); color: #fff;
+    font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  }
+  .export-btn:hover { opacity: 0.9; }
+  .export-hint { text-align: center; font-size: 0.75rem; color: #7c7c9c; margin-bottom: 12px; }
+  .reminder-box {
+    background: #2b2416; border: 1px solid #4a3d1f; border-radius: 10px;
+    padding: 10px 12px; font-size: 0.78rem; color: #e8c877; margin-bottom: 16px; line-height: 1.4;
+  }
+
+  .section-title { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+  .section-sub { font-size: 0.8rem; color: #9a9aae; margin-bottom: 14px; }
+
+  .add-form { display: grid; gap: 10px; margin-bottom: 20px; background: #1a1a2b; padding: 14px; border-radius: 12px; }
+  .add-form-row { display: flex; gap: 8px; }
+  .add-form input, .add-form select {
+    flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid #33334d;
+    background: #1a1a2b; color: #f0f0f5; font-size: 0.95rem; min-width: 0;
+  }
+  .add-form button { padding: 10px 16px; border-radius: 10px; border: none; background: #4ade80; color: #0a0a12; font-weight: 600; cursor: pointer; }
+  .add-form label { font-size: 0.7rem; color: #7c7c9c; display: block; margin-bottom: 2px; }
+  .field-block { flex: 1; }
+
+  .slot-input-row {
+    display: flex; gap: 8px; align-items: flex-end; background: #12121e;
+    padding: 8px; border-radius: 10px; margin-bottom: 4px;
+  }
+  .slot-input-row input[type="time"], .slot-input-row input[type="number"] { flex: 0 0 auto; width: 100px; }
+  .slot-remove-btn { background: none; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px 8px; }
+  .add-slot-btn { background: #1a2b4a; color: #60a5fa; border: none; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; cursor: pointer; width: 100%; }
+
+  .category-manager { background: #12121e; padding: 10px; border-radius: 10px; }
+  .category-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .category-pill {
+    display: flex; align-items: center; gap: 6px; background: #23233a; padding: 5px 10px;
+    border-radius: 20px; font-size: 0.8rem;
+  }
+  .category-pill button { background: none; border: none; color: #6c6c86; cursor: pointer; font-size: 0.85rem; padding: 0; }
+  .category-pill button:hover { color: #ef4444; }
+  .category-add-row { display: flex; gap: 6px; }
+  .category-add-row input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #33334d; background: #1a1a2b; color: #f0f0f5; font-size: 0.85rem; }
+  .category-add-row button { padding: 8px 12px; border-radius: 8px; border: none; background: #4ade80; color: #0a0a12; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+
+  .category-block { margin-bottom: 18px; }
+  .category-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7c7c9c; margin-bottom: 8px; padding-left: 4px; }
+
+  .routine-card { background: #23233a; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .routine-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .routine-name { font-size: 0.98rem; font-weight: 600; }
+  .delete-btn { background: none; border: none; color: #6c6c86; font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
+  .delete-btn:hover { color: #ef4444; }
+
+  .slot-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; background: #1a1a2b; gap: 10px; }
+  .slot-row.done { background: #1f3d2b; }
+  .slot-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #4ade80; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 0.85rem; }
+  .checkbox.checked { background: #4ade80; color: #0a0a12; }
+  .slot-time { font-size: 0.88rem; }
+  .slot-time.done-text { text-decoration: line-through; color: #7c7c9c; }
+  .slot-duration { font-size: 0.72rem; color: #7c7c9c; }
+  .streak { font-size: 0.72rem; color: #f59e0b; background: #2b2416; padding: 2px 7px; border-radius: 7px; flex-shrink: 0; }
+  .slot-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .cal-btn { background: #1a2b4a; border: none; color: #60a5fa; font-size: 0.85rem; cursor: pointer; padding: 5px 7px; border-radius: 7px; }
+  .cal-btn:hover { background: #24365f; }
+  .slot-del-btn { background: none; border: none; color: #6c6c86; font-size: 0.95rem; cursor: pointer; padding: 4px 6px; }
+  .slot-del-btn:hover { color: #ef4444; }
+
+  .empty-hint { text-align: center; color: #6c6c86; font-size: 0.9rem; padding: 30px 0; }
+
+  /* Wochenraster */
+  .week-table-wrap { overflow-x: auto; background: #23233a; border-radius: 12px; padding: 12px; }
+  table.week-table { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+  table.week-table th, table.week-table td { padding: 6px 8px; text-align: center; }
+  table.week-table th { color: #9a9aae; font-weight: 600; }
+  table.week-table td.routine-label { text-align: left; color: #f0f0f5; font-weight: 500; white-space: nowrap; }
+  .cell-yes { color: #4ade80; font-weight: 700; }
+  .cell-no { color: #4b4b63; }
+  .cell-na { color: #33334d; }
+  .today-col { background: rgba(96,165,250,0.1); border-radius: 6px; }
+
+  /* Monatsheatmap */
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .month-day { aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: #cfcfe0; }
+  .month-day.empty { background: transparent; }
+  .month-weekday-label { text-align: center; font-size: 0.7rem; color: #7c7c9c; margin-bottom: 4px; }
+  .legend { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #9a9aae; margin-top: 12px; justify-content: center; }
+  .legend-box { width: 14px; height: 14px; border-radius: 4px; }
+
+  /* Wochentag-Analyse */
+  .weekday-bars { display: flex; gap: 8px; align-items: flex-end; height: 160px; margin-top: 10px; }
+  .weekday-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .weekday-bar { width: 60%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #4ade80, #22c55e); min-height: 2px; }
+  .weekday-bar-label { font-size: 0.72rem; color: #9a9aae; margin-top: 6px; }
+  .weekday-bar-pct { font-size: 0.7rem; color: #cfcfe0; margin-bottom: 4px; }
+  .insight-box { background: #1a2b4a; border-radius: 10px; padding: 12px; margin-top: 16px; font-size: 0.85rem; color: #cfe0ff; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎯 Routine Tracker</h1>
+    <p id="dateLabel"></p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="heute" onclick="switchTab('heute')">Heute</button>
+    <button class="tab-btn" data-tab="woche" onclick="switchTab('woche')">Woche</button>
+    <button class="tab-btn" data-tab="monat" onclick="switchTab('monat')">Monat</button>
+    <button class="tab-btn" data-tab="muster" onclick="switchTab('muster')">Muster</button>
+  </div>
+
+  <!-- TAB: HEUTE -->
+  <div class="tab-panel active" id="panel-heute">
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Heutiger Fortschritt</span><span id="progressText">0/0</span></div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="export-btn-wrap">
+      <button class="export-btn" onclick="exportAllToCalendar()">📅 Nächste 7 Tage in Kalender exportieren</button>
+    </div>
+    <div class="export-hint">Termine laufen automatisch nach einer Woche aus – kein Zumüllen des Kalenders.</div>
+
+    <div class="reminder-box">
+      💡 Tipp gegen Doppeleinträge: Beim erneuten Export nach Zeit-Änderungen erst die alte Terminserie im Kalender löschen, dann neu importieren.
+    </div>
+
+    <div class="add-form">
+      <div class="add-form-row">
+        <input type="text" id="newItemInput" placeholder="Neue Routine hinzufügen (z. B. Zähneputzen)...">
+      </div>
+      <div class="add-form-row">
+        <div class="field-block">
+          <label>Kategorie</label>
+          <select id="newItemCategory"></select>
+        </div>
+      </div>
+
+      <div class="category-manager">
+        <label style="margin-bottom:6px;">Kategorien verwalten</label>
+        <div class="category-pills" id="categoryPills"></div>
+        <div class="category-add-row">
+          <input type="text" id="newCategoryInput" placeholder="Neue Kategorie...">
+          <button onclick="addCategory()">+ Hinzufügen</button>
+        </div>
+      </div>
+
+      <div id="slotInputsContainer"></div>
+      <button class="add-slot-btn" onclick="addSlotInput()">+ Weitere Uhrzeit hinzufügen</button>
+      <button onclick="addItem()" style="width:100%;">+ Routine anlegen</button>
+    </div>
+
+    <div id="routineList"></div>
+    <div class="empty-hint" id="emptyHint" style="display:none;">Noch keine Routinen angelegt. Leg los! 💪</div>
+  </div>
+
+  <!-- TAB: WOCHE -->
+  <div class="tab-panel" id="panel-woche">
+    <div class="section-title">Letzte 7 Tage</div>
+    <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine gab's an dem Tag noch nicht.</div>
+    <div class="week-table-wrap"><div id="weekTable"></div></div>
+  </div>
+
+  <!-- TAB: MONAT -->
+  <div class="tab-panel" id="panel-monat">
+    <div class="section-title" id="monthTitle">Monatsübersicht</div>
+    <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag.</div>
+    <div class="month-weekday-label" id="monthWeekdayLabels"></div>
+    <div class="month-grid" id="monthGrid"></div>
+    <div class="legend">
+      <span>0%</span>
+      <div class="legend-box" style="background:#23233a;"></div>
+      <div class="legend-box" style="background:#1f3d2b;"></div>
+      <div class="legend-box" style="background:#1c6b3c;"></div>
+      <div class="legend-box" style="background:#22c55e;"></div>
+      <div class="legend-box" style="background:#4ade80;"></div>
+      <span>100%</span>
+    </div>
+  </div>
+
+  <!-- TAB: MUSTER -->
+  <div class="tab-panel" id="panel-muster">
+    <div class="section-title">Wochentags-Analyse</div>
+    <div class="section-sub">Durchschnittliche Erledigungsquote je Wochentag, über deinen gesamten Trackingzeitraum.</div>
+    <div class="weekday-bars" id="weekdayBars"></div>
+    <div class="insight-box" id="weekdayInsight"></div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'routineTrackerData';
+const EXPORT_DAYS = 7;
+const DEFAULT_CATEGORIES = ['Training','Ernährung','Content','Mindset','Gesundheit','Sonstiges'];
+const WEEKDAY_NAMES = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const WEEKDAY_NAMES_FULL = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function pad(n) { return n.toString().padStart(2, '0'); }
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  let data = raw ? JSON.parse(raw) : { lastReset: todayStr(), items: [], categories: [...DEFAULT_CATEGORIES], history: {} };
+
+  if (!data.categories) data.categories = [...DEFAULT_CATEGORIES];
+  if (!data.history) data.history = {};
+
+  data.items.forEach(item => {
+    if (!item.slots) {
+      item.slots = [{ slotId: item.id + '-s1', time: item.time || '08:00', duration: item.duration || 30, done: item.done || false, streak: item.streak || 0 }];
+      delete item.time; delete item.duration; delete item.done; delete item.streak;
+    }
+  });
+
+  snapshotHistory(data, data.lastReset);
+
+  if (data.lastReset !== todayStr()) {
+    data.items.forEach(item => {
+      item.slots.forEach(slot => { if (!slot.done) slot.streak = 0; slot.done = false; });
+    });
+    data.lastReset = todayStr();
+    snapshotHistory(data, data.lastReset);
+    saveData(data);
+  }
+  return data;
+}
+
+function snapshotHistory(data, dateKey) {
+  if (!dateKey) return;
+  const bySlot = {};
+  data.items.forEach(item => item.slots.forEach(slot => { bySlot[slot.slotId] = slot.done; }));
+  data.history[dateKey] = bySlot;
+}
+
+function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+let data = loadData();
+let slotInputCount = 0;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+  if (tab === 'woche') renderWeekTable();
+  if (tab === 'monat') renderMonthGrid();
+  if (tab === 'muster') renderWeekdayAnalysis();
+}
+
+function renderCategorySelect() {
+  const sel = document.getElementById('newItemCategory');
+  sel.innerHTML = data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function renderCategoryPills() {
+  const wrap = document.getElementById('categoryPills');
+  wrap.innerHTML = '';
+  data.categories.forEach(cat => {
+    const pill = document.createElement('div');
+    pill.className = 'category-pill';
+    const span = document.createElement('span');
+    span.textContent = cat;
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.onclick = () => deleteCategory(cat);
+    pill.appendChild(span);
+    pill.appendChild(btn);
+    wrap.appendChild(pill);
+  });
+}
+
+function addCategory() {
+  const input = document.getElementById('newCategoryInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (data.categories.includes(name)) { alert('Diese Kategorie gibt es schon.'); return; }
+  data.categories.push(name);
+  input.value = '';
+  saveData(data);
+  renderCategoryPills();
+  renderCategorySelect();
+}
+
+function deleteCategory(cat) {
+  const usedByItems = data.items.some(i => i.category === cat);
+  if (usedByItems) {
+    if (!confirm(`"${cat}" wird noch von mindestens einer Routine verwendet. Diese Routinen werden auf "Sonstiges" umgestellt. Fortfahren?`)) return;
+    if (!data.categories.includes('Sonstiges')) data.categories.push('Sonstiges');
+    data.items.forEach(i => { if (i.category === cat) i.category = 'Sonstiges'; });
+  }
+  data.categories = data.categories.filter(c => c !== cat);
+  saveData(data);
+  renderCategoryPills();
+  renderCategorySelect();
+  render();
+}
+
+function addSlotInput(defaultTime, defaultDuration) {
+  slotInputCount++;
+  const container = document.getElementById('slotInputsContainer');
+  const row = document.createElement('div');
+  row.className = 'slot-input-row';
+  row.id = 'slotInput-' + slotInputCount;
+  row.innerHTML = `
+    <div class="field-block"><label>Uhrzeit</label><input type="time" class="slot-time-input" value="${defaultTime || '08:00'}"></div>
+    <div class="field-block"><label>Dauer (Min)</label><input type="number" class="slot-duration-input" value="${defaultDuration || 15}" min="1" step="5"></div>
+    <button class="slot-remove-btn" onclick="removeSlotInput(${slotInputCount})">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function removeSlotInput(id) {
+  const el = document.getElementById('slotInput-' + id);
+  if (el && document.querySelectorAll('.slot-input-row').length > 1) el.remove();
+}
+
+addSlotInput('08:00', 15);
+
+function addItem() {
+  const input = document.getElementById('newItemInput');
+  const category = document.getElementById('newItemCategory').value;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const slotRows = document.querySelectorAll('.slot-input-row');
+  const slots = Array.from(slotRows).map((row, idx) => ({
+    slotId: 'slot-' + Date.now() + '-' + idx,
+    time: row.querySelector('.slot-time-input').value || '08:00',
+    duration: parseInt(row.querySelector('.slot-duration-input').value) || 15,
+    done: false, streak: 0
+  }));
+
+  data.items.push({ id: Date.now(), text, category, slots });
+  input.value = '';
+  document.getElementById('slotInputsContainer').innerHTML = '';
+  addSlotInput('08:00', 15);
+  snapshotHistory(data, todayStr());
+  saveData(data);
+  render();
+}
+
+function toggleSlot(itemId, slotId) {
+  const item = data.items.find(i => i.id === itemId);
+  const slot = item.slots.find(s => s.slotId === slotId);
+  slot.done = !slot.done;
+  slot.streak = slot.done ? slot.streak + 1 : Math.max(0, slot.streak - 1);
+  snapshotHistory(data, todayStr());
+  saveData(data);
+  render();
+}
+
+function deleteItem(id) {
+  data.items = data.items.filter(i => i.id !== id);
+  snapshotHistory(data, todayStr());
+  saveData(data);
+  render();
+}
+
+function deleteSlot(itemId, slotId) {
+  const item = data.items.find(i => i.id === itemId);
+  item.slots = item.slots.filter(s => s.slotId !== slotId);
+  if (item.slots.length === 0) { deleteItem(itemId); return; }
+  snapshotHistory(data, todayStr());
+  saveData(data);
+  render();
+}
+
+function formatICSDate(date) { return date.getFullYear() + pad(date.getMonth()+1) + pad(date.getDate()) + 'T' + pad(date.getHours()) + pad(date.getMinutes()) + '00'; }
+function formatICSDateUTC(date) { return date.getUTCFullYear() + pad(date.getUTCMonth()+1) + pad(date.getUTCDate()) + 'T' + pad(date.getUTCHours()) + pad(date.getUTCMinutes()) + '00Z'; }
+
+let exportTimestamp = null;
+
+function buildVEvent(item, slot) {
+  const [h, m] = slot.time.split(':').map(Number);
+  const start = new Date(); start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + slot.duration * 60000);
+  const until = new Date(start); until.setDate(until.getDate() + (EXPORT_DAYS - 1)); until.setHours(23, 59, 59, 0);
+  const uid = 'routine-' + slot.slotId + '-' + exportTimestamp + '@routinetracker';
+  return ['BEGIN:VEVENT','UID:' + uid,'DTSTAMP:' + formatICSDateUTC(new Date()),'DTSTART:' + formatICSDate(start),'DTEND:' + formatICSDate(end),'RRULE:FREQ=DAILY;UNTIL=' + formatICSDateUTC(until),'SUMMARY:' + item.text + ' (' + item.category + ')','DESCRIPTION:Routine aus Routine Tracker – gültig für ' + EXPORT_DAYS + ' Tage','END:VEVENT'].join('\r\n');
+}
+
+function downloadICS(content, filename) {
+  const icsContent = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//RoutineTracker//DE','CALSCALE:GREGORIAN', content, 'END:VCALENDAR'].join('\r\n');
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportAllToCalendar() {
+  if (data.items.length === 0) { alert('Noch keine Routinen zum Exportieren vorhanden.'); return; }
+  exportTimestamp = Date.now();
+  const events = [];
+  data.items.forEach(item => item.slots.forEach(slot => events.push(buildVEvent(item, slot))));
+  downloadICS(events.join('\r\n'), 'routinen_kalender_7tage.ics');
+}
+
+function exportSlotToCalendar(itemId, slotId) {
+  const item = data.items.find(i => i.id === itemId);
+  const slot = item.slots.find(s => s.slotId === slotId);
+  exportTimestamp = Date.now();
+  downloadICS(buildVEvent(item, slot), item.text.replace(/\s+/g, '_') + '_' + slot.time.replace(':','') + '.ics');
+}
+
+function render() {
+  const list = document.getElementById('routineList');
+  const emptyHint = document.getElementById('emptyHint');
+  list.innerHTML = '';
+  emptyHint.style.display = data.items.length === 0 ? 'block' : 'none';
+
+  const categories = [...new Set(data.items.map(i => i.category))];
+
+  categories.forEach(cat => {
+    const catItems = data.items.filter(i => i.category === cat);
+    const block = document.createElement('div');
+    block.className = 'category-block';
+    const title = document.createElement('div');
+    title.className = 'category-title';
+    title.textContent = cat;
+    block.appendChild(title);
+
+    catItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'routine-card';
+      const header = document.createElement('div');
+      header.className = 'routine-header';
+      const name = document.createElement('span');
+      name.className = 'routine-name';
+      name.textContent = item.text + (item.slots.length > 1 ? ' (' + item.slots.length + '×)' : '');
+      const del = document.createElement('button');
+      del.className = 'delete-btn'; del.textContent = '✕'; del.title = 'Ganze Routine löschen';
+      del.onclick = () => deleteItem(item.id);
+      header.appendChild(name); header.appendChild(del);
+      card.appendChild(header);
+
+      item.slots.sort((a,b) => a.time.localeCompare(b.time)).forEach(slot => {
+        const row = document.createElement('div');
+        row.className = 'slot-row' + (slot.done ? ' done' : '');
+        const left = document.createElement('div');
+        left.className = 'slot-left';
+        const box = document.createElement('div');
+        box.className = 'checkbox' + (slot.done ? ' checked' : '');
+        box.textContent = slot.done ? '✓' : '';
+        box.onclick = () => toggleSlot(item.id, slot.slotId);
+        const timeWrap = document.createElement('div');
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'slot-time' + (slot.done ? ' done-text' : '');
+        timeSpan.textContent = '🕐 ' + slot.time + ' Uhr';
+        const durSpan = document.createElement('div');
+        durSpan.className = 'slot-duration';
+        durSpan.textContent = slot.duration + ' Min';
+        timeWrap.appendChild(timeSpan); timeWrap.appendChild(durSpan);
+        left.appendChild(box); left.appendChild(timeWrap);
+        if (slot.streak > 0) {
+          const streakTag = document.createElement('span');
+          streakTag.className = 'streak'; streakTag.textContent = '🔥 ' + slot.streak;
+          left.appendChild(streakTag);
+        }
+        const actions = document.createElement('div');
+        actions.className = 'slot-actions';
+        const calBtn = document.createElement('button');
+        calBtn.className = 'cal-btn'; calBtn.textContent = '📅'; calBtn.title = '7 Tage exportieren';
+        calBtn.onclick = () => exportSlotToCalendar(item.id, slot.slotId);
+        const slotDel = document.createElement('button');
+        slotDel.className = 'slot-del-btn'; slotDel.textContent = '✕'; slotDel.title = 'Diese Uhrzeit löschen';
+        slotDel.onclick = () => deleteSlot(item.id, slot.slotId);
+        actions.appendChild(calBtn); actions.appendChild(slotDel);
+        row.appendChild(left); row.appendChild(actions);
+        card.appendChild(row);
+      });
+      block.appendChild(card);
+    });
+    list.appendChild(block);
+  });
+
+  const allSlots = data.items.flatMap(i => i.slots);
+  const total = allSlots.length;
+  const doneCount = allSlots.filter(s => s.done).length;
+  const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${doneCount}/${total}`;
+
+  renderCategorySelect();
+  renderCategoryPills();
+}
+
+function getLastNDates(n) {
+  const dates = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
+function renderWeekTable() {
+  const dates = getLastNDates(7);
+  const todayKey = todayStr();
+  const allSlots = [];
+  data.items.forEach(item => item.slots.forEach(slot => allSlots.push({ item, slot })));
+
+  let html = '<table class="week-table"><thead><tr><th class="routine-label">Routine</th>';
+  dates.forEach(dStr => {
+    const d = new Date(dStr);
+    const label = WEEKDAY_NAMES[d.getDay()] + '<br>' + d.getDate() + '.' + (d.getMonth()+1) + '.';
+    html += `<th class="${dStr === todayKey ? 'today-col' : ''}">${label}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  if (allSlots.length === 0) {
+    html += `<tr><td colspan="${dates.length + 1}" style="color:#6c6c86;">Noch keine Routinen vorhanden.</td></tr>`;
+  }
+
+  allSlots.forEach(({ item, slot }) => {
+    html += `<tr><td class="routine-label">${item.text} · ${slot.time}</td>`;
+    dates.forEach(dStr => {
+      const rec = data.history[dStr];
+      let cell = '<span class="cell-na">–</span>';
+      if (rec && Object.prototype.hasOwnProperty.call(rec, slot.slotId)) {
+        cell = rec[slot.slotId] ? '<span class="cell-yes">✓</span>' : '<span class="cell-no">○</span>';
+      }
+      html += `<td class="${dStr === todayKey ? 'today-col' : ''}">${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('weekTable').innerHTML = html;
+}
+
+function dayCompletion(dateKey) {
+  const rec = data.history[dateKey];
+  if (!rec) return null;
+  const keys = Object.keys(rec);
+  if (keys.length === 0) return null;
+  const done = keys.filter(k => rec[k]).length;
+  return done / keys.length;
+}
+
+function completionColor(pct) {
+  if (pct === null) return '#23233a';
+  if (pct === 0) return '#1f3d2b';
+  if (pct < 0.4) return '#1c6b3c';
+  if (pct < 0.8) return '#22c55e';
+  return '#4ade80';
+}
+
+function renderMonthGrid() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const monthNames = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  document.getElementById('monthTitle').textContent = monthNames[month] + ' ' + year;
+
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startOffset = (firstDay.getDay() + 6) % 7; // Montag = 0
+
+  document.getElementById('monthWeekdayLabels').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">' +
+    ['Mo','Di','Mi','Do','Fr','Sa','So'].map(d => `<div>${d}</div>`).join('') + '</div>';
+
+  const grid = document.getElementById('monthGrid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < startOffset; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'month-day empty';
+    grid.appendChild(empty);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateKey = year + '-' + pad(month + 1) + '-' + pad(day);
+    const pct = dayCompletion(dateKey);
+    const cell = document.createElement('div');
+    cell.className = 'month-day';
+    cell.style.background = completionColor(pct);
+    cell.textContent = day;
+    if (dateKey === todayStr()) cell.style.outline = '2px solid #60a5fa';
+    if (pct !== null) cell.title = Math.round(pct * 100) + '% erledigt';
+    grid.appendChild(cell);
+  }
+}
+
+function renderWeekdayAnalysis() {
+  const sums = [0,0,0,0,0,0,0];
+  const counts = [0,0,0,0,0,0,0];
+
+  Object.keys(data.history).forEach(dateKey => {
+    const pct = dayCompletion(dateKey);
+    if (pct === null) return;
+    const wd = new Date(dateKey).getDay();
+    sums[wd] += pct;
+    counts[wd]++;
+  });
+
+  const order = [1,2,3,4,5,6,0]; // Mo..So
+  const barsContainer = document.getElementById('weekdayBars');
+  barsContainer.innerHTML = '';
+
+  const averages = order.map(wd => counts[wd] > 0 ? sums[wd] / counts[wd] : null);
+
+  order.forEach((wd, idx) => {
+    const avg = averages[idx];
+    const col = document.createElement('div');
+    col.className = 'weekday-bar-col';
+    const pctLabel = document.createElement('div');
+    pctLabel.className = 'weekday-bar-pct';
+    pctLabel.textContent = avg === null ? '–' : Math.round(avg * 100) + '%';
+    const bar = document.createElement('div');
+    bar.className = 'weekday-bar';
+    bar.style.height = avg === null ? '2px' : Math.max(2, avg * 140) + 'px';
+    const label = document.createElement('div');
+    label.className = 'weekday-bar-label';
+    label.textContent = WEEKDAY_NAMES[wd];
+    col.appendChild(pctLabel); col.appendChild(bar); col.appendChild(label);
+    barsContainer.appendChild(col);
+  });
+
+  const validAverages = order.map((wd, i) => ({ wd, avg: averages[i] })).filter(o => o.avg !== null);
+  const insightBox = document.getElementById('weekdayInsight');
+  if (validAverages.length < 3) {
+    insightBox.textContent = '💡 Sammle noch ein paar Tage Daten, dann zeig ich dir hier dein stärkstes und schwächstes Wochentagsmuster.';
+  } else {
+    const best = validAverages.reduce((a, b) => a.avg > b.avg ? a : b);
+    const worst = validAverages.reduce((a, b) => a.avg < b.avg ? a : b);
+    insightBox.innerHTML = `💡 Dein stärkster Tag ist aktuell <b>${WEEKDAY_NAMES_FULL[best.wd]}</b> mit ${Math.round(best.avg*100)}% Erledigungsquote. Am ehesten kippen deine Routinen am <b>${WEEKDAY_NAMES_FULL[worst.wd]}</b> (${Math.round(worst.avg*100)}%) – vielleicht lohnt sich da ein Blick, was an dem Tag anders läuft.`;
+  }
+}
+
+document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('de-AT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+document.getElementById('newItemInput').addEventListener('keypress', e => { if (e.key === 'Enter') addItem(); });
+
+render();
+</script>
+</body>
+</html>
