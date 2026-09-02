@@ -27,6 +27,21 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  .date-nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: #23233a; border-radius: 14px; padding: 10px 14px; margin-bottom: 12px;
+  }
+  .date-nav-btn {
+    background: #1a2b4a; border: none; color: #60a5fa; font-size: 1.1rem; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  }
+  .date-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .date-nav-label { flex: 1; text-align: center; font-size: 0.9rem; font-weight: 600; }
+  .date-nav-today-btn {
+    background: #4ade80; color: #0a0a12; border: none; border-radius: 8px;
+    padding: 6px 10px; font-size: 0.72rem; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  }
+
   .progress-wrap { background: #23233a; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
   .progress-bar-bg { background: #33334d; border-radius: 10px; height: 14px; overflow: hidden; margin-top: 8px; }
   .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22c55e); width: 0%; transition: width 0.3s ease; }
@@ -97,7 +112,7 @@
 
   .slot-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; background: #1a1a2b; gap: 10px; }
   .slot-row.done { background: #1f3d2b; }
-  .slot-row.inactive-today { opacity: 0.45; }
+  .slot-row.inactive-day { opacity: 0.45; }
   .slot-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #4ade80; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 0.85rem; }
   .checkbox.checked { background: #4ade80; color: #0a0a12; }
@@ -115,7 +130,6 @@
 
   .empty-hint { text-align: center; color: #6c6c86; font-size: 0.9rem; padding: 30px 0; }
 
-  /* Wochenraster */
   .week-table-wrap { overflow-x: auto; background: #23233a; border-radius: 12px; padding: 12px; }
   table.week-table { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
   table.week-table th, table.week-table td { padding: 6px 8px; text-align: center; }
@@ -126,7 +140,6 @@
   .cell-na { color: #33334d; }
   .today-col { background: rgba(96,165,250,0.1); border-radius: 6px; }
 
-  /* Monatsheatmap */
   .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
   .month-day { aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: #cfcfe0; }
   .month-day.empty { background: transparent; }
@@ -134,7 +147,6 @@
   .legend { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #9a9aae; margin-top: 12px; justify-content: center; }
   .legend-box { width: 14px; height: 14px; border-radius: 4px; }
 
-  /* Wochentag-Analyse */
   .weekday-bars { display: flex; gap: 8px; align-items: flex-end; height: 160px; margin-top: 10px; }
   .weekday-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
   .weekday-bar { width: 60%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #4ade80, #22c55e); min-height: 2px; }
@@ -151,16 +163,24 @@
   </header>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="heute" onclick="switchTab('heute')">Heute</button>
+    <button class="tab-btn active" data-tab="heute" onclick="switchTab('heute')">Tag</button>
     <button class="tab-btn" data-tab="woche" onclick="switchTab('woche')">Woche</button>
     <button class="tab-btn" data-tab="monat" onclick="switchTab('monat')">Monat</button>
     <button class="tab-btn" data-tab="muster" onclick="switchTab('muster')">Muster</button>
   </div>
 
-  <!-- TAB: HEUTE -->
+  <!-- TAB: TAG -->
   <div class="tab-panel active" id="panel-heute">
+
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="changeDay(-1)">◀</button>
+      <div class="date-nav-label" id="viewDateLabel"></div>
+      <button class="date-nav-btn" id="nextDayBtn" onclick="changeDay(1)">▶</button>
+    </div>
+    <div class="export-hint" id="notTodayHint" style="display:none;">Du bearbeitest einen anderen Tag als heute – praktisch, falls du kurz nach Mitternacht noch was vom Vortag nachtragen willst.</div>
+
     <div class="progress-wrap">
-      <div class="progress-label"><span>Heutiger Fortschritt</span><span id="progressText">0/0</span></div>
+      <div class="progress-label"><span>Fortschritt an diesem Tag</span><span id="progressText">0/0</span></div>
       <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
     </div>
 
@@ -205,14 +225,14 @@
   <!-- TAB: WOCHE -->
   <div class="tab-panel" id="panel-woche">
     <div class="section-title">Letzte 7 Tage</div>
-    <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine war an dem Tag gar nicht dran (falscher Wochentag oder gab's noch nicht).</div>
+    <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine war an dem Tag gar nicht dran.</div>
     <div class="week-table-wrap"><div id="weekTable"></div></div>
   </div>
 
   <!-- TAB: MONAT -->
   <div class="tab-panel" id="panel-monat">
     <div class="section-title" id="monthTitle">Monatsübersicht</div>
-    <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag (nur relevante Routinen zählen mit).</div>
+    <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag.</div>
     <div class="month-weekday-label" id="monthWeekdayLabels"></div>
     <div class="month-grid" id="monthGrid"></div>
     <div class="legend">
@@ -243,65 +263,71 @@ const DEFAULT_CATEGORIES = ['Training','Nutrition','Content','Mindset','Health',
 const WEEKDAY_NAMES = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const WEEKDAY_NAMES_FULL = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 const WEEKDAY_SHORT_PICKER = ['Mo','Di','Mi','Do','Fr','Sa','So'];
-const WEEKDAY_PICKER_TO_JSDAY = [1,2,3,4,5,6,0]; // Mapping Picker-Index -> JS getDay()
-const ICS_BYDAY = ['SU','MO','TU','WE','TH','FR','SA']; // Index = JS getDay()
+const WEEKDAY_PICKER_TO_JSDAY = [1,2,3,4,5,6,0];
+const ICS_BYDAY = ['SU','MO','TU','WE','TH','FR','SA'];
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
 function pad(n) { return n.toString().padStart(2, '0'); }
+// WICHTIG: lokales Datum verwenden, NICHT toISOString() (das nutzt UTC und
+// zeigt kurz nach Mitternacht in Österreich noch den Vortag an!)
+function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function todayStr() { return fmtDate(new Date()); }
+function parseDate(dateKey) { const [y,m,d] = dateKey.split('-').map(Number); return new Date(y, m-1, d); }
+function addDaysToKey(dateKey, n) { const d = parseDate(dateKey); d.setDate(d.getDate() + n); return fmtDate(d); }
+function weekdayOfKey(dateKey) { return parseDate(dateKey).getDay(); }
 
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  let data = raw ? JSON.parse(raw) : { lastReset: todayStr(), items: [], categories: [...DEFAULT_CATEGORIES], history: {} };
-
+  let data = raw ? JSON.parse(raw) : { items: [], categories: [...DEFAULT_CATEGORIES], history: {} };
   if (!data.categories) data.categories = [...DEFAULT_CATEGORIES];
   if (!data.history) data.history = {};
 
   data.items.forEach(item => {
     if (!item.slots) {
-      item.slots = [{ slotId: item.id + '-s1', time: item.time || '08:00', duration: item.duration || 30, done: item.done || false, streak: item.streak || 0 }];
-      delete item.time; delete item.duration; delete item.done; delete item.streak;
+      item.slots = [{ slotId: item.id + '-s1', time: item.time || '08:00', duration: item.duration || 30, weekdays: [0,1,2,3,4,5,6] }];
     }
     item.slots.forEach(slot => {
-      if (!slot.weekdays) slot.weekdays = [0,1,2,3,4,5,6]; // Standard: alle Tage
+      if (!slot.weekdays) slot.weekdays = [0,1,2,3,4,5,6];
+      delete slot.done; delete slot.streak;
     });
   });
-
-  snapshotHistory(data, data.lastReset);
-
-  if (data.lastReset !== todayStr()) {
-    const lastResetWeekday = new Date(data.lastReset).getDay();
-    data.items.forEach(item => {
-      item.slots.forEach(slot => {
-        const wasActive = slot.weekdays.includes(lastResetWeekday);
-        if (wasActive && !slot.done) slot.streak = 0;
-        slot.done = false;
-      });
-    });
-    data.lastReset = todayStr();
-    snapshotHistory(data, data.lastReset);
-    saveData(data);
-  }
   return data;
-}
-
-function isSlotActiveOnWeekday(slot, jsWeekday) {
-  return slot.weekdays.includes(jsWeekday);
-}
-
-function snapshotHistory(data, dateKey) {
-  if (!dateKey) return;
-  const weekday = new Date(dateKey).getDay();
-  const bySlot = {};
-  data.items.forEach(item => item.slots.forEach(slot => {
-    if (isSlotActiveOnWeekday(slot, weekday)) bySlot[slot.slotId] = slot.done;
-  }));
-  data.history[dateKey] = bySlot;
 }
 
 function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
 let data = loadData();
+let systemToday = todayStr();
+let viewDate = systemToday;
 let slotInputCount = 0;
+
+function isSlotActiveOnWeekday(slot, jsWeekday) { return slot.weekdays.includes(jsWeekday); }
+
+function itemCreatedKey(item) { return fmtDate(new Date(item.id)); }
+
+function getSlotDone(slot, dateKey) {
+  return !!(data.history[dateKey] && data.history[dateKey][slot.slotId]);
+}
+
+function setSlotDone(slot, dateKey, value) {
+  if (!data.history[dateKey]) data.history[dateKey] = {};
+  data.history[dateKey][slot.slotId] = value;
+  saveData(data);
+}
+
+function computeStreak(slot) {
+  let count = 0;
+  let d = new Date();
+  for (let i = 0; i < 730; i++) {
+    const wd = d.getDay();
+    if (slot.weekdays.includes(wd)) {
+      const key = fmtDate(d);
+      if (getSlotDone(slot, key)) { count++; }
+      else { break; }
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  return count;
+}
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -310,6 +336,15 @@ function switchTab(tab) {
   if (tab === 'monat') renderMonthGrid();
   if (tab === 'muster') renderWeekdayAnalysis();
 }
+
+function changeDay(delta) {
+  const newKey = addDaysToKey(viewDate, delta);
+  if (newKey > systemToday) return;
+  viewDate = newKey;
+  render();
+}
+
+function jumpToToday() { viewDate = systemToday; render(); }
 
 function renderCategorySelect() {
   const sel = document.getElementById('newItemCategory');
@@ -327,8 +362,7 @@ function renderCategoryPills() {
     const btn = document.createElement('button');
     btn.textContent = '✕';
     btn.onclick = () => deleteCategory(cat);
-    pill.appendChild(span);
-    pill.appendChild(btn);
+    pill.appendChild(span); pill.appendChild(btn);
     wrap.appendChild(pill);
   });
 }
@@ -341,8 +375,7 @@ function addCategory() {
   data.categories.push(name);
   input.value = '';
   saveData(data);
-  renderCategoryPills();
-  renderCategorySelect();
+  renderCategoryPills(); renderCategorySelect();
 }
 
 function deleteCategory(cat) {
@@ -354,9 +387,7 @@ function deleteCategory(cat) {
   }
   data.categories = data.categories.filter(c => c !== cat);
   saveData(data);
-  renderCategoryPills();
-  renderCategorySelect();
-  render();
+  renderCategoryPills(); renderCategorySelect(); render();
 }
 
 function addSlotInput(defaultTime, defaultDuration, defaultWeekdays) {
@@ -365,7 +396,6 @@ function addSlotInput(defaultTime, defaultDuration, defaultWeekdays) {
   const row = document.createElement('div');
   row.className = 'slot-input-row';
   row.id = 'slotInput-' + slotInputCount;
-
   const activeDays = defaultWeekdays || [0,1,2,3,4,5,6];
 
   const topRow = document.createElement('div');
@@ -383,7 +413,6 @@ function addSlotInput(defaultTime, defaultDuration, defaultWeekdays) {
 
   const picker = document.createElement('div');
   picker.className = 'weekday-picker';
-  picker.dataset.slotInputId = slotInputCount;
   WEEKDAY_SHORT_PICKER.forEach((label, idx) => {
     const jsDay = WEEKDAY_PICKER_TO_JSDAY[idx];
     const btn = document.createElement('div');
@@ -394,7 +423,6 @@ function addSlotInput(defaultTime, defaultDuration, defaultWeekdays) {
     picker.appendChild(btn);
   });
   row.appendChild(picker);
-
   container.appendChild(row);
 }
 
@@ -420,7 +448,6 @@ function addItem() {
       slotId: 'slot-' + Date.now() + '-' + idx,
       time: row.querySelector('.slot-time-input').value || '08:00',
       duration: parseInt(row.querySelector('.slot-duration-input').value) || 15,
-      done: false, streak: 0,
       weekdays: weekdays
     };
   });
@@ -429,7 +456,6 @@ function addItem() {
   input.value = '';
   document.getElementById('slotInputsContainer').innerHTML = '';
   addSlotInput('08:00', 15);
-  snapshotHistory(data, todayStr());
   saveData(data);
   render();
 }
@@ -437,18 +463,13 @@ function addItem() {
 function toggleSlot(itemId, slotId) {
   const item = data.items.find(i => i.id === itemId);
   const slot = item.slots.find(s => s.slotId === slotId);
-  const todayWeekday = new Date().getDay();
-  if (!isSlotActiveOnWeekday(slot, todayWeekday)) return;
-  slot.done = !slot.done;
-  slot.streak = slot.done ? slot.streak + 1 : Math.max(0, slot.streak - 1);
-  snapshotHistory(data, todayStr());
-  saveData(data);
+  if (!isSlotActiveOnWeekday(slot, weekdayOfKey(viewDate))) return;
+  setSlotDone(slot, viewDate, !getSlotDone(slot, viewDate));
   render();
 }
 
 function deleteItem(id) {
   data.items = data.items.filter(i => i.id !== id);
-  snapshotHistory(data, todayStr());
   saveData(data);
   render();
 }
@@ -457,7 +478,6 @@ function deleteSlot(itemId, slotId) {
   const item = data.items.find(i => i.id === itemId);
   item.slots = item.slots.filter(s => s.slotId !== slotId);
   if (item.slots.length === 0) { deleteItem(itemId); return; }
-  snapshotHistory(data, todayStr());
   saveData(data);
   render();
 }
@@ -525,12 +545,20 @@ function weekdaysLabel(weekdays) {
 }
 
 function render() {
+  const isToday = viewDate === systemToday;
+  const dKey = viewDate;
+  const d = parseDate(dKey);
+  const label = (isToday ? 'Heute · ' : '') + WEEKDAY_NAMES_FULL[d.getDay()] + ', ' + d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+  document.getElementById('viewDateLabel').textContent = label;
+  document.getElementById('nextDayBtn').disabled = isToday;
+  document.getElementById('notTodayHint').style.display = isToday ? 'none' : 'block';
+
   const list = document.getElementById('routineList');
   const emptyHint = document.getElementById('emptyHint');
   list.innerHTML = '';
   emptyHint.style.display = data.items.length === 0 ? 'block' : 'none';
 
-  const todayWeekday = new Date().getDay();
+  const viewWeekday = weekdayOfKey(dKey);
   const categories = [...new Set(data.items.map(i => i.category))];
 
   categories.forEach(cat => {
@@ -557,19 +585,20 @@ function render() {
       card.appendChild(header);
 
       item.slots.sort((a,b) => a.time.localeCompare(b.time)).forEach(slot => {
-        const activeToday = isSlotActiveOnWeekday(slot, todayWeekday);
+        const activeOnViewDay = isSlotActiveOnWeekday(slot, viewWeekday);
+        const done = activeOnViewDay && getSlotDone(slot, dKey);
         const row = document.createElement('div');
-        row.className = 'slot-row' + (slot.done ? ' done' : '') + (!activeToday ? ' inactive-today' : '');
+        row.className = 'slot-row' + (done ? ' done' : '') + (!activeOnViewDay ? ' inactive-day' : '');
         const left = document.createElement('div');
         left.className = 'slot-left';
         const box = document.createElement('div');
-        box.className = 'checkbox' + (slot.done ? ' checked' : '') + (!activeToday ? ' disabled' : '');
-        box.textContent = slot.done ? '✓' : '';
-        box.title = activeToday ? '' : 'Heute nicht geplant';
+        box.className = 'checkbox' + (done ? ' checked' : '') + (!activeOnViewDay ? ' disabled' : '');
+        box.textContent = done ? '✓' : '';
+        box.title = activeOnViewDay ? '' : 'An diesem Tag nicht geplant';
         box.onclick = () => toggleSlot(item.id, slot.slotId);
         const timeWrap = document.createElement('div');
         const timeSpan = document.createElement('span');
-        timeSpan.className = 'slot-time' + (slot.done ? ' done-text' : '');
+        timeSpan.className = 'slot-time' + (done ? ' done-text' : '');
         timeSpan.textContent = '🕐 ' + slot.time + ' Uhr';
         const durSpan = document.createElement('div');
         durSpan.className = 'slot-duration';
@@ -579,9 +608,10 @@ function render() {
         daysSpan.textContent = weekdaysLabel(slot.weekdays);
         timeWrap.appendChild(timeSpan); timeWrap.appendChild(durSpan); timeWrap.appendChild(daysSpan);
         left.appendChild(box); left.appendChild(timeWrap);
-        if (slot.streak > 0) {
+        const streak = computeStreak(slot);
+        if (streak > 0) {
           const streakTag = document.createElement('span');
-          streakTag.className = 'streak'; streakTag.textContent = '🔥 ' + slot.streak;
+          streakTag.className = 'streak'; streakTag.textContent = '🔥 ' + streak;
           left.appendChild(streakTag);
         }
         const actions = document.createElement('div');
@@ -601,9 +631,9 @@ function render() {
     list.appendChild(block);
   });
 
-  const allSlotsToday = data.items.flatMap(i => i.slots).filter(s => isSlotActiveOnWeekday(s, todayWeekday));
+  const allSlotsToday = data.items.flatMap(i => i.slots).filter(s => isSlotActiveOnWeekday(s, viewWeekday));
   const total = allSlotsToday.length;
-  const doneCount = allSlotsToday.filter(s => s.done).length;
+  const doneCount = allSlotsToday.filter(s => getSlotDone(s, dKey)).length;
   const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressText').textContent = `${doneCount}/${total}`;
@@ -617,22 +647,27 @@ function getLastNDates(n) {
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
+    dates.push(fmtDate(d));
   }
   return dates;
 }
 
+function slotApplicableOnDate(item, slot, dateKey) {
+  if (dateKey < itemCreatedKey(item)) return false;
+  return isSlotActiveOnWeekday(slot, weekdayOfKey(dateKey));
+}
+
 function renderWeekTable() {
   const dates = getLastNDates(7);
-  const todayKey = todayStr();
+  const todayKey = systemToday;
   const allSlots = [];
   data.items.forEach(item => item.slots.forEach(slot => allSlots.push({ item, slot })));
 
   let html = '<table class="week-table"><thead><tr><th class="routine-label">Routine</th>';
   dates.forEach(dStr => {
-    const d = new Date(dStr);
-    const label = WEEKDAY_NAMES[d.getDay()] + '<br>' + d.getDate() + '.' + (d.getMonth()+1) + '.';
-    html += `<th class="${dStr === todayKey ? 'today-col' : ''}">${label}</th>`;
+    const d = parseDate(dStr);
+    const lbl = WEEKDAY_NAMES[d.getDay()] + '<br>' + d.getDate() + '.' + (d.getMonth()+1) + '.';
+    html += `<th class="${dStr === todayKey ? 'today-col' : ''}">${lbl}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -643,10 +678,9 @@ function renderWeekTable() {
   allSlots.forEach(({ item, slot }) => {
     html += `<tr><td class="routine-label">${item.text} · ${slot.time}</td>`;
     dates.forEach(dStr => {
-      const rec = data.history[dStr];
       let cell = '<span class="cell-na">–</span>';
-      if (rec && Object.prototype.hasOwnProperty.call(rec, slot.slotId)) {
-        cell = rec[slot.slotId] ? '<span class="cell-yes">✓</span>' : '<span class="cell-no">○</span>';
+      if (slotApplicableOnDate(item, slot, dStr)) {
+        cell = getSlotDone(slot, dStr) ? '<span class="cell-yes">✓</span>' : '<span class="cell-no">○</span>';
       }
       html += `<td class="${dStr === todayKey ? 'today-col' : ''}">${cell}</td>`;
     });
@@ -658,12 +692,15 @@ function renderWeekTable() {
 }
 
 function dayCompletion(dateKey) {
-  const rec = data.history[dateKey];
-  if (!rec) return null;
-  const keys = Object.keys(rec);
-  if (keys.length === 0) return null;
-  const done = keys.filter(k => rec[k]).length;
-  return done / keys.length;
+  let total = 0, done = 0;
+  data.items.forEach(item => item.slots.forEach(slot => {
+    if (slotApplicableOnDate(item, slot, dateKey)) {
+      total++;
+      if (getSlotDone(slot, dateKey)) done++;
+    }
+  }));
+  if (total === 0) return null;
+  return done / total;
 }
 
 function completionColor(pct) {
@@ -683,7 +720,7 @@ function renderMonthGrid() {
 
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startOffset = (firstDay.getDay() + 6) % 7; // Montag = 0
+  const startOffset = (firstDay.getDay() + 6) % 7;
 
   document.getElementById('monthWeekdayLabels').innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">' +
@@ -705,7 +742,7 @@ function renderMonthGrid() {
     cell.className = 'month-day';
     cell.style.background = completionColor(pct);
     cell.textContent = day;
-    if (dateKey === todayStr()) cell.style.outline = '2px solid #60a5fa';
+    if (dateKey === systemToday) cell.style.outline = '2px solid #60a5fa';
     if (pct !== null) cell.title = Math.round(pct * 100) + '% erledigt';
     grid.appendChild(cell);
   }
@@ -715,18 +752,17 @@ function renderWeekdayAnalysis() {
   const sums = [0,0,0,0,0,0,0];
   const counts = [0,0,0,0,0,0,0];
 
-  Object.keys(data.history).forEach(dateKey => {
-    const pct = dayCompletion(dateKey);
-    if (pct === null) return;
-    const wd = new Date(dateKey).getDay();
-    sums[wd] += pct;
-    counts[wd]++;
-  });
+  let d = new Date();
+  for (let i = 0; i < 90; i++) {
+    const key = fmtDate(d);
+    const pct = dayCompletion(key);
+    if (pct !== null) { const wd = d.getDay(); sums[wd] += pct; counts[wd]++; }
+    d.setDate(d.getDate() - 1);
+  }
 
-  const order = [1,2,3,4,5,6,0]; // Mo..So
+  const order = [1,2,3,4,5,6,0];
   const barsContainer = document.getElementById('weekdayBars');
   barsContainer.innerHTML = '';
-
   const averages = order.map(wd => counts[wd] > 0 ? sums[wd] / counts[wd] : null);
 
   order.forEach((wd, idx) => {
@@ -756,6 +792,23 @@ function renderWeekdayAnalysis() {
     insightBox.innerHTML = `💡 Dein stärkster Tag ist aktuell <b>${WEEKDAY_NAMES_FULL[best.wd]}</b> mit ${Math.round(best.avg*100)}% Erledigungsquote. Am ehesten kippen deine Routinen am <b>${WEEKDAY_NAMES_FULL[worst.wd]}</b> (${Math.round(worst.avg*100)}%) – vielleicht lohnt sich da ein Blick, was an dem Tag anders läuft.`;
   }
 }
+
+function checkDayRollover() {
+  const t = todayStr();
+  if (t !== systemToday) {
+    const wasTrackingToday = viewDate === systemToday;
+    systemToday = t;
+    if (wasTrackingToday) viewDate = t;
+    const activePanel = document.querySelector('.tab-panel.active').id;
+    render();
+    if (activePanel === 'panel-woche') renderWeekTable();
+    if (activePanel === 'panel-monat') renderMonthGrid();
+    if (activePanel === 'panel-muster') renderWeekdayAnalysis();
+  }
+}
+
+setInterval(checkDayRollover, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDayRollover(); });
 
 document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('de-AT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 document.getElementById('newItemInput').addEventListener('keypress', e => { if (e.key === 'Enter') addItem(); });
