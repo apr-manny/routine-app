@@ -37,10 +37,6 @@
   }
   .date-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .date-nav-label { flex: 1; text-align: center; font-size: 0.9rem; font-weight: 600; }
-  .date-nav-today-btn {
-    background: #4ade80; color: #0a0a12; border: none; border-radius: 8px;
-    padding: 6px 10px; font-size: 0.72rem; font-weight: 700; cursor: pointer; flex-shrink: 0;
-  }
 
   .progress-wrap { background: #23233a; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
   .progress-bar-bg { background: #33334d; border-radius: 10px; height: 14px; overflow: hidden; margin-top: 8px; }
@@ -102,7 +98,15 @@
   .category-add-row button { padding: 8px 12px; border-radius: 8px; border: none; background: #4ade80; color: #0a0a12; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
 
   .category-block { margin-bottom: 18px; }
-  .category-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7c7c9c; margin-bottom: 8px; padding-left: 4px; }
+  .category-block.dragging { opacity: 0.5; }
+  .category-block.drag-over { outline: 2px dashed #60a5fa; outline-offset: 4px; }
+  .category-title { 
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7c7c9c; 
+    margin-bottom: 8px; padding-left: 4px; cursor: grab; user-select: none; 
+    display: flex; align-items: center; gap: 6px;
+  }
+  .category-title:active { cursor: grabbing; }
+  .drag-handle { color: #60a5fa; font-size: 0.9rem; opacity: 0.7; }
 
   .routine-card { background: #23233a; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
   .routine-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -169,15 +173,13 @@
     <button class="tab-btn" data-tab="muster" onclick="switchTab('muster')">Muster</button>
   </div>
 
-  <!-- TAB: TAG -->
   <div class="tab-panel active" id="panel-heute">
-
     <div class="date-nav">
       <button class="date-nav-btn" onclick="changeDay(-1)">◀</button>
       <div class="date-nav-label" id="viewDateLabel"></div>
       <button class="date-nav-btn" id="nextDayBtn" onclick="changeDay(1)">▶</button>
     </div>
-    <div class="export-hint" id="notTodayHint" style="display:none;">Du bearbeitest einen anderen Tag als heute – praktisch, falls du kurz nach Mitternacht noch was vom Vortag nachtragen willst.</div>
+    <div class="export-hint" id="notTodayHint" style="display:none;">Du bearbeitest einen anderen Tag als heute.</div>
 
     <div class="progress-wrap">
       <div class="progress-label"><span>Fortschritt an diesem Tag</span><span id="progressText">0/0</span></div>
@@ -187,7 +189,7 @@
     <div class="export-btn-wrap">
       <button class="export-btn" onclick="exportAllToCalendar()">📅 Nächste 7 Tage in Kalender exportieren</button>
     </div>
-    <div class="export-hint">Termine laufen automatisch nach einer Woche aus – kein Zumüllen des Kalenders.</div>
+    <div class="export-hint">Termine laufen automatisch nach einer Woche aus.</div>
 
     <div class="reminder-box">
       💡 Tipp gegen Doppeleinträge: Beim erneuten Export nach Zeit-Änderungen erst die alte Terminserie im Kalender löschen, dann neu importieren.
@@ -195,7 +197,7 @@
 
     <div class="add-form">
       <div class="add-form-row">
-        <input type="text" id="newItemInput" placeholder="Neue Routine hinzufügen (z. B. Oberkörper Workout)...">
+        <input type="text" id="newItemInput" placeholder="Neue Routine hinzufügen...">
       </div>
       <div class="add-form-row">
         <div class="field-block">
@@ -222,14 +224,12 @@
     <div class="empty-hint" id="emptyHint" style="display:none;">Noch keine Routinen angelegt. Leg los! 💪</div>
   </div>
 
-  <!-- TAB: WOCHE -->
   <div class="tab-panel" id="panel-woche">
     <div class="section-title">Letzte 7 Tage</div>
     <div class="section-sub">Grüner Haken = erledigt, Punkt = offen, Strich = Routine war an dem Tag gar nicht dran.</div>
     <div class="week-table-wrap"><div id="weekTable"></div></div>
   </div>
 
-  <!-- TAB: MONAT -->
   <div class="tab-panel" id="panel-monat">
     <div class="section-title" id="monthTitle">Monatsübersicht</div>
     <div class="section-sub">Je heller das Grün, desto höher deine Erledigungsquote an diesem Tag.</div>
@@ -246,7 +246,6 @@
     </div>
   </div>
 
-  <!-- TAB: MUSTER -->
   <div class="tab-panel" id="panel-muster">
     <div class="section-title">Wochentags-Analyse</div>
     <div class="section-sub">Durchschnittliche Erledigungsquote je Wochentag, nur basierend auf Routinen, die an dem Tag überhaupt geplant waren.</div>
@@ -267,8 +266,6 @@ const WEEKDAY_PICKER_TO_JSDAY = [1,2,3,4,5,6,0];
 const ICS_BYDAY = ['SU','MO','TU','WE','TH','FR','SA'];
 
 function pad(n) { return n.toString().padStart(2, '0'); }
-// WICHTIG: lokales Datum verwenden, NICHT toISOString() (das nutzt UTC und
-// zeigt kurz nach Mitternacht in Österreich noch den Vortag an!)
 function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
 function todayStr() { return fmtDate(new Date()); }
 function parseDate(dateKey) { const [y,m,d] = dateKey.split('-').map(Number); return new Date(y, m-1, d); }
@@ -277,9 +274,10 @@ function weekdayOfKey(dateKey) { return parseDate(dateKey).getDay(); }
 
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  let data = raw ? JSON.parse(raw) : { items: [], categories: [...DEFAULT_CATEGORIES], history: {} };
+  let data = raw ? JSON.parse(raw) : { items: [], categories: [...DEFAULT_CATEGORIES], history: {}, categoryOrder: [...DEFAULT_CATEGORIES] };
   if (!data.categories) data.categories = [...DEFAULT_CATEGORIES];
   if (!data.history) data.history = {};
+  if (!data.categoryOrder) data.categoryOrder = [...data.categories];
 
   data.items.forEach(item => {
     if (!item.slots) {
@@ -301,13 +299,8 @@ let viewDate = systemToday;
 let slotInputCount = 0;
 
 function isSlotActiveOnWeekday(slot, jsWeekday) { return slot.weekdays.includes(jsWeekday); }
-
 function itemCreatedKey(item) { return fmtDate(new Date(item.id)); }
-
-function getSlotDone(slot, dateKey) {
-  return !!(data.history[dateKey] && data.history[dateKey][slot.slotId]);
-}
-
+function getSlotDone(slot, dateKey) { return !!(data.history[dateKey] && data.history[dateKey][slot.slotId]); }
 function setSlotDone(slot, dateKey, value) {
   if (!data.history[dateKey]) data.history[dateKey] = {};
   data.history[dateKey][slot.slotId] = value;
@@ -321,8 +314,7 @@ function computeStreak(slot) {
     const wd = d.getDay();
     if (slot.weekdays.includes(wd)) {
       const key = fmtDate(d);
-      if (getSlotDone(slot, key)) { count++; }
-      else { break; }
+      if (getSlotDone(slot, key)) { count++; } else { break; }
     }
     d.setDate(d.getDate() - 1);
   }
@@ -343,8 +335,6 @@ function changeDay(delta) {
   viewDate = newKey;
   render();
 }
-
-function jumpToToday() { viewDate = systemToday; render(); }
 
 function renderCategorySelect() {
   const sel = document.getElementById('newItemCategory');
@@ -373,6 +363,7 @@ function addCategory() {
   if (!name) return;
   if (data.categories.includes(name)) { alert('Diese Kategorie gibt es schon.'); return; }
   data.categories.push(name);
+  data.categoryOrder.push(name);
   input.value = '';
   saveData(data);
   renderCategoryPills(); renderCategorySelect();
@@ -383,9 +374,11 @@ function deleteCategory(cat) {
   if (usedByItems) {
     if (!confirm(`"${cat}" wird noch von mindestens einer Routine verwendet. Diese Routinen werden auf "Other" umgestellt. Fortfahren?`)) return;
     if (!data.categories.includes('Other')) data.categories.push('Other');
+    if (!data.categoryOrder.includes('Other')) data.categoryOrder.push('Other');
     data.items.forEach(i => { if (i.category === cat) i.category = 'Other'; });
   }
   data.categories = data.categories.filter(c => c !== cat);
+  data.categoryOrder = data.categoryOrder.filter(c => c !== cat);
   saveData(data);
   renderCategoryPills(); renderCategorySelect(); render();
 }
@@ -544,6 +537,50 @@ function weekdaysLabel(weekdays) {
   return sorted.map(d => WEEKDAY_NAMES[d]).join(', ');
 }
 
+// Drag-and-Drop für Kategorien
+let draggedCategory = null;
+
+function handleDragStart(e, cat) {
+  draggedCategory = cat;
+  e.target.closest('.category-block').classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', cat);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const block = e.target.closest('.category-block');
+  if (block) block.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  const block = e.target.closest('.category-block');
+  if (block) block.classList.remove('drag-over');
+}
+
+function handleDrop(e, targetCat) {
+  e.preventDefault();
+  const sourceCat = draggedCategory;
+  if (!sourceCat || sourceCat === targetCat) return;
+
+  const fromIdx = data.categoryOrder.indexOf(sourceCat);
+  const toIdx = data.categoryOrder.indexOf(targetCat);
+  if (fromIdx === -1 || toIdx === -1) return;
+
+  data.categoryOrder.splice(fromIdx, 1);
+  data.categoryOrder.splice(toIdx, 0, sourceCat);
+  saveData(data);
+  render();
+}
+
+function handleDragEnd(e) {
+  document.querySelectorAll('.category-block').forEach(b => {
+    b.classList.remove('dragging', 'drag-over');
+  });
+  draggedCategory = null;
+}
+
 function render() {
   const isToday = viewDate === systemToday;
   const dKey = viewDate;
@@ -559,18 +596,33 @@ function render() {
   emptyHint.style.display = data.items.length === 0 ? 'block' : 'none';
 
   const viewWeekday = weekdayOfKey(dKey);
-  const categories = [...new Set(data.items.map(i => i.category))];
 
-  categories.forEach(cat => {
+  // Kategorien in der gespeicherten Reihenfolge rendern
+  data.categoryOrder.forEach(cat => {
     const catItems = data.items.filter(i => i.category === cat);
+    if (catItems.length === 0) return;
+
     const block = document.createElement('div');
     block.className = 'category-block';
+    block.draggable = true;
+    block.dataset.category = cat;
+    block.addEventListener('dragstart', (e) => handleDragStart(e, cat));
+    block.addEventListener('dragover', handleDragOver);
+    block.addEventListener('dragleave', handleDragLeave);
+    block.addEventListener('drop', (e) => handleDrop(e, cat));
+    block.addEventListener('dragend', handleDragEnd);
+
     const title = document.createElement('div');
     title.className = 'category-title';
-    title.textContent = cat;
+    title.innerHTML = '<span class="drag-handle">⋮⋮</span>' + cat;
+    title.title = 'Ziehen zum Verschieben der Kategorie';
     block.appendChild(title);
 
-    catItems.forEach(item => {
+    catItems.sort((a, b) => {
+      const aMinTime = Math.min(...a.slots.map(s => parseInt(s.time.replace(':', ''))));
+      const bMinTime = Math.min(...b.slots.map(s => parseInt(s.time.replace(':', ''))));
+      return aMinTime - bMinTime;
+    }).forEach(item => {
       const card = document.createElement('div');
       card.className = 'routine-card';
       const header = document.createElement('div');
